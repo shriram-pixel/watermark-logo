@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>MaxVision Watermark Tool</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:"Segoe UI",Arial,sans-serif;background:linear-gradient(135deg,#eef2f7,#f9fafb);color:#1f2937}
+.wrapper{min-height:100vh;padding:40px 20px}
+.container{max-width:1150px;margin:auto;background:#fff;border-radius:22px;box-shadow:0 20px 60px rgba(0,0,0,.1);overflow:hidden}
+.header{background:linear-gradient(135deg,#111827,#374151);color:#fff;padding:30px}
+.header h1{margin:0;font-size:30px}
+.header p{margin:8px 0 0;color:#d1d5db}
+.content{display:grid;grid-template-columns:1.5fr 1fr;gap:30px;padding:30px}
+.card{background:#f9fafb;border:1px solid #e5e7eb;border-radius:18px;padding:24px}
+.drop-area{border:2px dashed #9ca3af;background:#fff;border-radius:18px;padding:55px 20px;text-align:center;cursor:pointer;transition:.25s}
+.drop-area:hover,.drop-area.dragover{border-color:#2563eb;background:#eff6ff}
+.drop-icon{font-size:48px;margin-bottom:12px}
+.drop-area h3{margin:0 0 8px;font-size:22px}
+.drop-area p{margin:0;color:#6b7280}
+.section-title{font-weight:700;margin:22px 0 10px}
+.file-box{display:block;background:#fff;border:1px solid #d1d5db;border-radius:12px;padding:14px;width:100%}
+.actions{display:flex;gap:12px;margin-top:24px;flex-wrap:wrap}
+button{border:none;padding:14px 22px;border-radius:12px;font-weight:700;cursor:pointer;transition:.2s}
+.primary-btn{background:#2563eb;color:#fff}
+.primary-btn:hover{background:#1d4ed8}
+.dark-btn{background:#111827;color:#fff}
+.dark-btn:hover{background:#000}
+.small-btn{width:100%;padding:10px 12px;border-radius:10px;background:#2563eb;color:#fff;margin-top:10px}
+button:disabled{background:#9ca3af;cursor:not-allowed}
+.logo-preview{background:#fff;border:1px solid #e5e7eb;border-radius:16px;height:190px;display:flex;align-items:center;justify-content:center;margin-top:12px}
+.logo-preview img{max-width:90%;max-height:160px}
+.status-box{margin-top:18px;background:#ecfdf5;color:#065f46;border:1px solid #a7f3d0;padding:14px;border-radius:12px;font-weight:600}
+.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.stat{background:#fff;border-radius:14px;padding:16px;border:1px solid #e5e7eb}
+.stat strong{display:block;font-size:24px;color:#111827}
+.stat span{color:#6b7280;font-size:14px}
+.output-section{padding:0 30px 30px}
+.output-header{display:flex;align-items:center;justify-content:space-between;gap:15px;margin-bottom:15px}
+.output-header h2{margin:0}
+.preview-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:18px}
+.preview-card{background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:12px;box-shadow:0 8px 20px rgba(0,0,0,.06)}
+.preview-card img{width:100%;height:170px;object-fit:contain;background:#f9fafb;border-radius:12px;border:1px solid #eee}
+.preview-card .name{font-size:13px;color:#374151;margin-top:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.footer-note{padding:0 30px 30px;color:#6b7280;font-size:14px}
+@media(max-width:850px){.content{grid-template-columns:1fr}.output-header{display:block}.output-header button{margin-top:12px}}
+</style>
+</head>
+
+<body>
+
+<div class="wrapper">
+<div class="container">
+
+<div class="header">
+<h1>MaxVision Image Watermark Tool</h1>
+<p>Upload images, apply fixed watermark, preview output, and download single images or ZIP.</p>
+</div>
+
+<div class="content">
+
+<div class="card">
+<div class="drop-area" id="dropArea">
+<div class="drop-icon">📁</div>
+<h3>Drag & Drop Images Here</h3>
+<p>or click to select multiple images</p>
+</div>
+
+<input type="file" id="imageInput" multiple accept="image/*" hidden>
+
+<div class="section-title">Select Full Folder</div>
+<input class="file-box" type="file" id="folderInput" webkitdirectory multiple accept="image/*">
+
+<div class="section-title">Change Watermark Logo</div>
+<input class="file-box" type="file" id="logoInput" accept="image/*">
+
+
+
+<div class="actions">
+<button class="primary-btn" id="processBtn">Process Images</button>
+<button class="dark-btn" id="downloadBtn" disabled>Download ZIP</button>
+<button class="dark-btn" id="clearSelectedBtn">Clear Selected</button>
+</div>
+
+<div class="status-box" id="progressText">
+Ready. Upload images to start.
+</div>
+</div>
+
+<div class="card">
+<div class="stats">
+<div class="stat">
+<strong id="selectedCount">0</strong>
+<span>Images Selected</span>
+</div>
+<div class="stat">
+<strong id="processedCount">0</strong>
+<span>Images Processed</span>
+</div>
+</div>
+
+<div class="section-title">Current Logo Preview</div>
+<div class="logo-preview">
+<img id="logoPreview" src="max-vision.png" alt="Watermark Logo">
+</div>
+
+<div class="section-title">Batch Protection</div>
+<p style="color:#6b7280;line-height:1.6">
+Images are processed in batches of 100 to prevent browser crash when uploading many images.
+</p>
+</div>
+
+</div>
+
+<div class="output-section">
+<div class="output-header">
+<h2>Output Image Preview</h2>
+<button class="dark-btn" id="clearBtn">Clear Output</button>
+</div>
+
+<div class="preview-grid" id="previewGrid"></div>
+</div>
+
+<div class="footer-note">
+Default logo file: <b>max-vision.png</b>. Keep it in the same folder as this HTML file.
+</div>
+
+</div>
+</div>
+
+<script>
+let selectedImages = [];
+let watermarkImage = new Image();
+let outputZip = null;
+let outputImages = [];
+
+const DEFAULT_LOGO = "max-vision.png";
+const BATCH_SIZE = 100;
+
+const WATERMARK_WIDTH_PERCENT = 1.10;
+const WATERMARK_OPACITY = 1.0;
+
+watermarkImage.src = DEFAULT_LOGO;
+
+const dropArea = document.getElementById("dropArea");
+const imageInput = document.getElementById("imageInput");
+const folderInput = document.getElementById("folderInput");
+const logoInput = document.getElementById("logoInput");
+const processBtn = document.getElementById("processBtn");
+const downloadBtn = document.getElementById("downloadBtn");
+const clearBtn = document.getElementById("clearBtn");
+const clearSelectedBtn = document.getElementById("clearSelectedBtn");
+const progressText = document.getElementById("progressText");
+const logoPreview = document.getElementById("logoPreview");
+const previewGrid = document.getElementById("previewGrid");
+const selectedCount = document.getElementById("selectedCount");
+const processedCount = document.getElementById("processedCount");
+
+function updateSelectedCount() {
+    selectedCount.innerText = selectedImages.length;
+}
+
+function addFiles(files) {
+    const images = files.filter(file => file.type.startsWith("image/"));
+
+    selectedImages = images;
+    imageInput.value = "";
+    folderInput.value = "";
+
+    updateSelectedCount();
+    progressText.innerText = selectedImages.length + " images selected. Previous selected images removed.";
+}
+
+dropArea.addEventListener("click", () => imageInput.click());
+
+dropArea.addEventListener("dragover", e => {
+    e.preventDefault();
+    dropArea.classList.add("dragover");
+});
+
+dropArea.addEventListener("dragleave", () => {
+    dropArea.classList.remove("dragover");
+});
+
+dropArea.addEventListener("drop", e => {
+    e.preventDefault();
+    dropArea.classList.remove("dragover");
+    addFiles(Array.from(e.dataTransfer.files));
+});
+
+imageInput.addEventListener("change", () => {
+    addFiles(Array.from(imageInput.files));
+});
+
+folderInput.addEventListener("change", () => {
+    addFiles(Array.from(folderInput.files));
+});
+
+logoInput.addEventListener("change", () => {
+    const file = logoInput.files[0];
+    if (!file) return;
+
+    const logoURL = URL.createObjectURL(file);
+
+    watermarkImage = new Image();
+    watermarkImage.onload = () => {
+        logoPreview.src = logoURL;
+    };
+    watermarkImage.src = logoURL;
+});
+
+clearSelectedBtn.addEventListener("click", () => {
+    selectedImages = [];
+    imageInput.value = "";
+    folderInput.value = "";
+    selectedCount.innerText = "0";
+    progressText.innerText = "Selected images cleared.";
+});
+
+function loadImage(file) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = reject;
+        img.src = URL.createObjectURL(file);
+    });
+}
+
+function waitForLogo() {
+    return new Promise((resolve, reject) => {
+        if (watermarkImage.complete && watermarkImage.naturalWidth > 0) {
+            resolve();
+        } else {
+            watermarkImage.onload = () => resolve();
+            watermarkImage.onerror = () => reject("Watermark logo failed to load.");
+        }
+    });
+}
+
+function getOutputType(file) {
+    const type = file.type.toLowerCase();
+
+    if (type === "image/png") return "image/png";
+    if (type === "image/webp") return "image/webp";
+    if (type === "image/jpeg" || type === "image/jpg") return "image/jpeg";
+
+    return "image/png";
+}
+
+function getOutputName(file) {
+    const originalName = file.name;
+    const dotIndex = originalName.lastIndexOf(".");
+
+    if (dotIndex === -1) {
+        return originalName + "-watermarked.png";
+    }
+
+    const name = originalName.substring(0, dotIndex);
+    const ext = originalName.substring(dotIndex);
+
+    return name + "-watermarked" + ext;
+}
+
+function canvasToBlob(canvas, type, quality = 0.95) {
+    return new Promise(resolve => {
+        canvas.toBlob(resolve, type, quality);
+    });
+}
+
+async function processSingleImage(file) {
+    await waitForLogo();
+
+    const img = await loadImage(file);
+
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+
+    canvas.width = img.width;
+    canvas.height = img.height;
+
+    ctx.drawImage(img, 0, 0);
+
+    const wmWidth = img.width * WATERMARK_WIDTH_PERCENT;
+    const ratio = wmWidth / watermarkImage.naturalWidth;
+    const wmHeight = watermarkImage.naturalHeight * ratio;
+
+    const x = (img.width - wmWidth) / 2;
+    const y = (img.height - wmHeight) / 2;
+
+    ctx.globalAlpha = WATERMARK_OPACITY;
+    ctx.drawImage(watermarkImage, x, y, wmWidth, wmHeight);
+    ctx.globalAlpha = 1;
+
+    const outputType = getOutputType(file);
+    const outputName = getOutputName(file);
+
+    const blob = await canvasToBlob(canvas, outputType, 0.95);
+    const url = URL.createObjectURL(blob);
+
+    return {
+        name: outputName,
+        blob: blob,
+        url: url
+    };
+}
+
+function addPreview(item) {
+    const card = document.createElement("div");
+    card.className = "preview-card";
+
+    const img = document.createElement("img");
+    img.src = item.url;
+
+    const name = document.createElement("div");
+    name.className = "name";
+    name.title = item.name;
+    name.innerText = item.name;
+
+    const btn = document.createElement("button");
+    btn.className = "small-btn";
+    btn.innerText = "Download Image";
+
+    btn.onclick = () => {
+        const link = document.createElement("a");
+        link.href = item.url;
+        link.download = item.name;
+        link.click();
+    };
+
+    card.appendChild(img);
+    card.appendChild(name);
+    card.appendChild(btn);
+
+    previewGrid.appendChild(card);
+}
+
+processBtn.addEventListener("click", async () => {
+    if (selectedImages.length === 0) {
+        alert("Please upload images first.");
+        return;
+    }
+
+    processBtn.disabled = true;
+    downloadBtn.disabled = true;
+
+    previewGrid.innerHTML = "";
+    outputImages.forEach(item => URL.revokeObjectURL(item.url));
+
+    outputImages = [];
+    outputZip = new JSZip();
+    processedCount.innerText = "0";
+
+    let total = selectedImages.length;
+    let processed = 0;
+
+    for (let i = 0; i < selectedImages.length; i += BATCH_SIZE) {
+        const batch = selectedImages.slice(i, i + BATCH_SIZE);
+
+        progressText.innerText =
+            "Processing batch " +
+            (Math.floor(i / BATCH_SIZE) + 1) +
+            " | " +
+            (i + 1) +
+            " to " +
+            Math.min(i + BATCH_SIZE, total);
+
+        for (const file of batch) {
+            try {
+                const result = await processSingleImage(file);
+
+                outputImages.push(result);
+                outputZip.file(result.name, result.blob);
+                addPreview(result);
+
+                processed++;
+                processedCount.innerText = processed;
+
+                progressText.innerText =
+                    "Processed " + processed + " / " + total + " images";
+            } catch (err) {
+                console.error("Failed:", file.name, err);
+            }
+        }
+
+        await new Promise(resolve => setTimeout(resolve, 300));
+    }
+
+    progressText.innerText = "Completed! Preview images below or download ZIP.";
+
+    selectedImages = [];
+    imageInput.value = "";
+    folderInput.value = "";
+    selectedCount.innerText = "0";
+
+    downloadBtn.disabled = false;
+    processBtn.disabled = false;
+});
+
+downloadBtn.addEventListener("click", async () => {
+    if (!outputZip) return;
+
+    progressText.innerText = "Creating ZIP file...";
+
+    const zipBlob = await outputZip.generateAsync({
+        type: "blob"
+    });
+
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(zipBlob);
+    link.download = "watermarked-images.zip";
+    link.click();
+
+    progressText.innerText = "ZIP downloaded successfully.";
+});
+
+clearBtn.addEventListener("click", () => {
+    previewGrid.innerHTML = "";
+
+    outputImages.forEach(item => URL.revokeObjectURL(item.url));
+
+    outputImages = [];
+    outputZip = null;
+
+    downloadBtn.disabled = true;
+    processedCount.innerText = "0";
+
+    progressText.innerText = "Output cleared.";
+});
+</script>
+
+</body>
+</html>
