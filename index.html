@@ -252,17 +252,7 @@ function getOutputType(file) {
 }
 
 function getOutputName(file) {
-    const originalName = file.name;
-    const dotIndex = originalName.lastIndexOf(".");
-
-    if (dotIndex === -1) {
-        return originalName + "-watermarked.png";
-    }
-
-    const name = originalName.substring(0, dotIndex);
-    const ext = originalName.substring(dotIndex);
-
-    return name + "-watermarked" + ext;
+    return file.name;
 }
 
 function canvasToBlob(canvas, type, quality = 0.95) {
